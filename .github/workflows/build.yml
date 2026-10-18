@@ -1,32 +1,43 @@
-name: Build Android 8.1 Oreo for Redmi 7A
+name: Build Android Oreo for Redmi 7A
 on:
   workflow_dispatch: # Позволяет запускать сборку кнопкой из браузера
 
 jobs:
   build:
-    runs-on: ubuntu-latest # Облако выделяет нам сервер на Linux
+    runs-on: ubuntu-22.04 # Принудительно выбираем стабильную версию Linux для старых систем
     steps:
     - name: Очистка места и подготовка сервера
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Установка инструментов компиляции (Java, Python, GCC)
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.1-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+        sudo apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf libncurses5-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 python-is-python3 libsdl1.2-dev
 
-    - name: Скачивание исходного кода Android 8.1 (LineageOS 15.1)
+    - name: Настройка утилиты Repo (инструмент Google)
+      run: |
+        mkdir -p ~/bin
+        curl https://googleapis.com > ~/bin/repo
+        chmod a+x ~/bin/repo
+        sudo ln -sf ~/bin/repo /usr/usr/bin/repo
+        sudo ln -sf ~/bin/repo /usr/bin/repo
+
+    - name: Скачивание исходного кода Android (LineageOS 15.1 / Android 8.1)
       run: |
         mkdir android && cd android
-        repo init -u https://github.com -b lineage-15.1 --git-lfs
+        git config --global user.name "megadypersniper2004"
+        git config --global user.email "megadypersniper2004@github.com"
+        repo init -u https://github.com -b lineage-15.1 --git-lfs --depth=1
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 
-    - name: Клонирование твоего Дерева Устройств (Redmi 7A)
+    - name: Клонирование реального Дерева Устройств Redmi 7A (pine)
       run: |
-        git clone https://github.com -b oreo android/device/xiaomi/pine
+        cd android
+        git clone https://github.com -b lineage-16.0 device/xiaomi/pine
 
     - name: Старт Облачной Сборки
       run: |
         cd android
         source build/envsetup.sh
         lunch lineage_pine-userdebug
-        mka bacon -j$(nproc --all) # Облако включает все свои ядра на 100%
+        mka bacon -j$(nproc --all)
