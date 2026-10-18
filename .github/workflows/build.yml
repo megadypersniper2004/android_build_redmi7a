@@ -19,7 +19,6 @@ jobs:
         mkdir -p ~/bin
         curl https://googleapis.com > ~/bin/repo
         chmod a+x ~/bin/repo
-        sudo ln -sf ~/bin/repo /usr/usr/bin/repo
         sudo ln -sf ~/bin/repo /usr/bin/repo
 
     - name: Скачивание исходного кода Android (LineageOS 15.1 / Android 8.1)
