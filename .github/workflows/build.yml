@@ -40,10 +40,29 @@ jobs:
         run: |
           mkdir -p "$GITHUB_WORKSPACE/android"
           cd "$GITHUB_WORKSPACE/android"
+
           repo init \
             -u https://github.com/LineageOS/android.git \
             -b lineage-15.1 \
             --depth=1
+
+      - name: Add Pine source manifest
+        run: |
+          cd "$GITHUB_WORKSPACE/android"
+          mkdir -p .repo/local_manifests
+
+          cat > .repo/local_manifests/pine.xml <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <remote name="github" fetch="https://github.com/" />
+
+            <project
+              name="PixelExperience-Devices/device_xiaomi_pine"
+              path="device/xiaomi/pine"
+              remote="github"
+              revision="pie" />
+          </manifest>
+          EOF
 
       - name: Sync sources
         run: |
@@ -53,37 +72,47 @@ jobs:
             --no-clone-bundle \
             --no-tags
 
-      - name: Check Pine device tree
+      - name: Check device configuration
         run: |
           cd "$GITHUB_WORKSPACE/android"
 
-          if [ ! -f device/xiaomi/pine/AndroidProducts.mk ]; then
-            echo "::error::Missing Oreo-compatible device tree for pine."
-            echo "Add the device tree, kernel and required vendor files."
-            exit 1
-          fi
+          for f in \
+            device/xiaomi/pine/AndroidProducts.mk \
+            device/xiaomi/pine/BoardConfig.mk \
+            device/xiaomi/pine/device.mk
+          do
+            if [ ! -f "$f" ]; then
+              echo "::error::Missing $f"
+              exit 1
+            fi
+          done
 
-          echo "Device tree found."
+          echo "=== Products ==="
           cat device/xiaomi/pine/AndroidProducts.mk
+
+          echo "=== Declared dependencies ==="
+          if [ -f device/xiaomi/pine/aosp.dependencies ]; then
+            cat device/xiaomi/pine/aosp.dependencies
+          fi
 
       - name: Configure build
         run: |
           cd "$GITHUB_WORKSPACE/android"
           source build/envsetup.sh
-          lunch lineage_pine-userdebug
+          lunch aosp_pine-userdebug
 
       - name: Build images
         run: |
           cd "$GITHUB_WORKSPACE/android"
           source build/envsetup.sh
-          lunch lineage_pine-userdebug
+          lunch aosp_pine-userdebug
           make -j2 systemimage bootimage
 
-      - name: Upload images
+      - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Redmi7A-Oreo-images
+          name: Redmi7A-Oreo-test
           path: |
             android/out/target/product/pine/system.img
             android/out/target/product/pine/boot.img
