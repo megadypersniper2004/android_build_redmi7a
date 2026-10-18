@@ -1,5 +1,6 @@
 
-name: Build Oreo for Redmi 7A
+
+name: Samsung Experience 9 - Redmi 7A
 
 on:
   workflow_dispatch:
@@ -16,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -25,7 +26,7 @@ jobs:
             gperf liblz4-tool libncurses5-dev libssl-dev \
             libxml2-utils lzop pngcrush rsync \
             squashfs-tools xsltproc zip zlib1g-dev \
-            openjdk-8-jdk python3
+            openjdk-8-jdk python3 python-is-python3
 
       - name: Install repo
         run: |
@@ -36,17 +37,17 @@ jobs:
           chmod +x "$HOME/bin/repo"
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - name: Initialize LineageOS 15.1
+      - name: Initialize Android 9 Pie
         run: |
           mkdir -p "$GITHUB_WORKSPACE/android"
           cd "$GITHUB_WORKSPACE/android"
 
           repo init \
-            -u https://github.com/LineageOS/android.git \
-            -b lineage-15.1 \
+            -u https://github.com/PixelExperience/manifest.git \
+            -b pie \
             --depth=1
 
-      - name: Add Pine source manifest
+      - name: Add Redmi 7A device tree
         run: |
           cd "$GITHUB_WORKSPACE/android"
           mkdir -p .repo/local_manifests
@@ -54,8 +55,6 @@ jobs:
           cat > .repo/local_manifests/pine.xml <<'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
-            <remote name="github" fetch="https://github.com/" />
-
             <project
               name="PixelExperience-Devices/device_xiaomi_pine"
               path="device/xiaomi/pine"
@@ -64,7 +63,7 @@ jobs:
           </manifest>
           EOF
 
-      - name: Sync sources
+      - name: Sync Android sources
         run: |
           cd "$GITHUB_WORKSPACE/android"
           repo sync -c -j2 \
@@ -72,47 +71,47 @@ jobs:
             --no-clone-bundle \
             --no-tags
 
-      - name: Check device configuration
+      - name: Check device tree
         run: |
           cd "$GITHUB_WORKSPACE/android"
 
           for f in \
             device/xiaomi/pine/AndroidProducts.mk \
             device/xiaomi/pine/BoardConfig.mk \
-            device/xiaomi/pine/device.mk
+            device/xiaomi/pine/device.mk \
+            device/xiaomi/pine/aosp_pine.mk \
+            device/xiaomi/pine/aosp.dependencies
           do
             if [ ! -f "$f" ]; then
-              echo "::error::Missing $f"
+              echo "::error::Missing required file: $f"
               exit 1
             fi
           done
 
-          echo "=== Products ==="
+          echo "=== Product definitions ==="
           cat device/xiaomi/pine/AndroidProducts.mk
 
-          echo "=== Declared dependencies ==="
-          if [ -f device/xiaomi/pine/aosp.dependencies ]; then
-            cat device/xiaomi/pine/aosp.dependencies
-          fi
+          echo "=== Dependencies ==="
+          cat device/xiaomi/pine/aosp.dependencies
 
-      - name: Configure build
+      - name: Check build target
         run: |
           cd "$GITHUB_WORKSPACE/android"
           source build/envsetup.sh
           lunch aosp_pine-userdebug
 
-      - name: Build images
+      - name: Build base images
         run: |
           cd "$GITHUB_WORKSPACE/android"
           source build/envsetup.sh
           lunch aosp_pine-userdebug
           make -j2 systemimage bootimage
 
-      - name: Upload artifacts
+      - name: Upload base build for inspection
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Redmi7A-Oreo-test
+          name: Pine-Android9-base
           path: |
             android/out/target/product/pine/system.img
             android/out/target/product/pine/boot.img
