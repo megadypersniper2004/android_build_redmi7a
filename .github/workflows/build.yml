@@ -1,5 +1,5 @@
 
-name: Build LineageOS 15.1 Oreo for Redmi 7A
+name: Build Oreo for Redmi 7A
 
 on:
   workflow_dispatch:
@@ -22,11 +22,10 @@ jobs:
           sudo apt-get install -y \
             bc bison build-essential ccache curl flex \
             g++-multilib gcc-multilib git git-lfs gnupg \
-            gperf imagemagick libncurses5-dev libncurses-dev \
-            libssl-dev libxml2 libxml2-utils lzop \
-            pngcrush rsync schedtool squashfs-tools \
-            xsltproc zip zlib1g-dev python-is-python3 \
-            openjdk-8-jdk
+            gperf liblz4-tool libncurses5-dev libssl-dev \
+            libxml2-utils lzop pngcrush rsync \
+            squashfs-tools xsltproc zip zlib1g-dev \
+            openjdk-8-jdk python3
 
       - name: Install repo
         run: |
@@ -41,7 +40,6 @@ jobs:
         run: |
           mkdir -p "$GITHUB_WORKSPACE/android"
           cd "$GITHUB_WORKSPACE/android"
-
           repo init \
             -u https://github.com/LineageOS/android.git \
             -b lineage-15.1 \
@@ -50,36 +48,44 @@ jobs:
       - name: Sync sources
         run: |
           cd "$GITHUB_WORKSPACE/android"
-          repo sync -c -j2 --force-sync \
-            --no-clone-bundle --no-tags
+          repo sync -c -j2 \
+            --force-sync \
+            --no-clone-bundle \
+            --no-tags
 
-      - name: Configure device
+      - name: Check Pine device tree
         run: |
           cd "$GITHUB_WORKSPACE/android"
-          source build/envsetup.sh
 
           if [ ! -f device/xiaomi/pine/AndroidProducts.mk ]; then
-            echo "Redmi 7A device tree is missing."
-            echo "A compatible Oreo device tree is required."
+            echo "::error::Missing Oreo-compatible device tree for pine."
+            echo "Add the device tree, kernel and required vendor files."
             exit 1
           fi
 
-          lunch lineage_pine-userdebug
+          echo "Device tree found."
+          cat device/xiaomi/pine/AndroidProducts.mk
 
-      - name: Build system image
+      - name: Configure build
         run: |
           cd "$GITHUB_WORKSPACE/android"
           source build/envsetup.sh
           lunch lineage_pine-userdebug
-          make systemimage -j2
 
-      - name: Upload build output
+      - name: Build images
+        run: |
+          cd "$GITHUB_WORKSPACE/android"
+          source build/envsetup.sh
+          lunch lineage_pine-userdebug
+          make -j2 systemimage bootimage
+
+      - name: Upload images
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: lineage-15.1-redmi-7a
+          name: Redmi7A-Oreo-images
           path: |
             android/out/target/product/pine/system.img
-            android/out/target/product/pine/*.zip
+            android/out/target/product/pine/boot.img
           if-no-files-found: warn
           retention-days: 7
