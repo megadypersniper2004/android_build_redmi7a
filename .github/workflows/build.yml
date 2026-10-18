@@ -1,0 +1,32 @@
+name: Build Android 8.1 Oreo for Redmi 7A
+on:
+  workflow_dispatch: # Позволяет запускать сборку кнопкой из браузера
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # Облако выделяет нам сервер на Linux
+    steps:
+    - name: Очистка места и подготовка сервера
+      uses: actions/checkout@v3
+
+    - name: Установка инструментов компиляции (Java, Python, GCC)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.1-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+
+    - name: Скачивание исходного кода Android 8.1 (LineageOS 15.1)
+      run: |
+        mkdir android && cd android
+        repo init -u https://github.com -b lineage-15.1 --git-lfs
+        repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+
+    - name: Клонирование твоего Дерева Устройств (Redmi 7A)
+      run: |
+        git clone https://github.com -b oreo android/device/xiaomi/pine
+
+    - name: Старт Облачной Сборки
+      run: |
+        cd android
+        source build/envsetup.sh
+        lunch lineage_pine-userdebug
+        mka bacon -j$(nproc --all) # Облако включает все свои ядра на 100%
