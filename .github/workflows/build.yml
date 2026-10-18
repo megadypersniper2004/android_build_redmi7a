@@ -1,4 +1,9 @@
 name: Build Android Oreo for Redmi 7A
+# Ссылки на исходники этого эксперимента для справки:
+# 1. Дерево устройств Redmi 7A: https://github.com
+# 2. Базовые исходники SDM439: https://github.com
+# 3. Исходники ядра Xiaomi (pine): https://github.com
+
 on:
   workflow_dispatch: # Позволяет запускать сборку кнопкой из браузера
 
@@ -32,7 +37,7 @@ jobs:
     - name: Клонирование реального Дерева Устройств Redmi 7A (pine)
       run: |
         cd android
-        git clone https://github.com -b lineage-16.0 device/xiaomi/pine
+        git clone https://github.com.git -b lineage-16.0 device/xiaomi/pine
 
     - name: Старт Облачной Сборки Образа
       run: |
